@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valentine's Special</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #ff416c, #ff4b2b);
+            color: white;
+            text-align: center;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        .popup {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            width: 300px;
+            position: relative;
+        }
+        .question {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        .buttons {
+            display: flex;
+            justify-content: space-around;
+        }
+        button {
+            background: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            color: #ff416c;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+        button:hover {
+            background: #ff4b2b;
+            color: white;
+        }
+        .no-button {
+            position: absolute;
+        }
+    </style>
+</head>
+<body>
+    <div class="popup">
+        <div class="question">Will you be my Valentine? ❤️</div>
+        <div class="buttons">
+            <button onclick="alert('Yay! Best decision ever! ❤️')">Yes</button>
+            <button class="no-button" onmouseover="moveNoButton()">No</button>
+        </div>
+    </div>
+    <script>
+        function moveNoButton() {
+            let button = document.querySelector('.no-button');
+            let x = Math.random() * (window.innerWidth - 100);
+            let y = Math.random() * (window.innerHeight - 50);
+            button.style.left = `${x}px`;
+            button.style.top = `${y}px`;
+        }
+    </script>
+</body>
+</html>
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valentine's Special</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #000, #ff1493, #00ff00, #1e90ff);
+            color: white;
+            text-align: center;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        .popup {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            width: 300px;
+            position: relative;
+        }
+        .question {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        .buttons {
+            display: flex;
+            justify-content: space-around;
+        }
+        button {
+            background: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            color: #ff1493;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+        button:hover {
+            background: #00ff00;
+            color: white;
+        }
+        .no-button, .yes-button-float {
+            position: absolute;
+        }
+    </style>
+</head>
+<body>
+    <div class="popup" id="popup">
+        <div class="question" id="question">Will you be my Valentine? ❤️</div>
+        <div class="buttons">
+            <button onclick="nextPopup('bhai thoda lamba route lo... no ke through jao.. select no till the end')">Yes</button>
+            <button class="no-button" onclick="nextPopup('bsdk just because mene kaha ki no select kro toh tum krdiye? 😏')">No</button>
+        </div>
+    </div>
+    <script>
+        function nextPopup(text) {
+            document.getElementById('question').innerText = text;
+            let noButton = document.querySelector('.no-button');
+            let yesButton = document.createElement('button');
+            yesButton.innerText = "Yes";
+            yesButton.classList.add('yes-button-float');
+            yesButton.style.position = "absolute";
+            yesButton.style.left = "50%";
+            yesButton.style.transform = "translateX(-50%)";
+            document.querySelector('.buttons').appendChild(yesButton);
+
+            let counter = 0;
+            let interval = setInterval(() => {
+                if (counter < 5) {
+                    yesButton.style.left = Math.random() * (window.innerWidth - 100) + "px";
+                    yesButton.style.top = Math.random() * (window.innerHeight - 50) + "px";
+                    counter++;
+                } else {
+                    clearInterval(interval);
+                    document.getElementById('question').innerText = "Will you be my Valentine? ❤️";
+                    yesButton.remove();
+                    noButton.onclick = () => {
+                        alert('Yay! Best decision ever! ❤️');
+                    };
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valentine's Special</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #000, #ff1493, #00ff00, #1e90ff);
+            color: white;
+            text-align: center;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        .popup {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            width: 300px;
+            position: relative;
+        }
+        .question {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        .buttons {
+            display: flex;
+            justify-content: space-around;
+        }
+        button {
+            background: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            color: #ff1493;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+        button:hover {
+            background: #00ff00;
+            color: white;
+        }
+        .yes-button-float {
+            position: absolute;
+        }
+    </style>
+</head>
+<body>
+    <div class="popup" id="popup">
+        <div class="question" id="question">Will you be my Valentine? ❤️</div>
+        <div class="buttons" id="buttons">
+            <button onclick="nextPopup(1)">Yes</button>
+            <button onclick="nextPopup(2)">No</button>
+        </div>
+    </div>
+    <script>
+        let step = 0;
+        function nextPopup(choice) {
+            let question = document.getElementById('question');
+            let buttons = document.getElementById('buttons');
+            buttons.innerHTML = '';
+            
+            if (step === 0 && choice === 1) {
+                question.innerText = "Bhai thoda lamba route lo... no ke through jao.. select no till the end";
+                buttons.innerHTML = '<button onclick="nextPopup(2)">No</button>';
+            } else if (step === 0 && choice === 2) {
+                question.innerText = "Bsdk just because mene kaha ki no select kro toh tumne krdiye? 😏";
+                buttons.innerHTML = '<button onclick="nextPopup(3)">Yes</button><button onclick="nextPopup(3)">No</button>';
+            } else if (step === 1 || step === 2) {
+                question.innerText = "Wah...very cute. Sooo... Will you be my Valentine?";
+                buttons.innerHTML = '<button class="yes-button-float" id="floatingYes">Yes</button><button onclick="nextPopup(4)">No</button>';
+                makeYesButtonMove();
+            } else {
+                question.innerText = "Will you be my Valentine? ❤️";
+                buttons.innerHTML = '<button onclick="alert(\'Yay! Best decision ever! ❤️\')">Yes</button>';
+            }
+            step++;
+        }
+
+        function makeYesButtonMove() {
+            let yesButton = document.getElementById('floatingYes');
+            let counter = 0;
+            let interval = setInterval(() => {
+                if (counter < 5) {
+                    yesButton.style.left = Math.random() * (window.innerWidth - 100) + "px";
+                    yesButton.style.top = Math.random() * (window.innerHeight - 50) + "px";
+                    counter++;
+                } else {
+                    clearInterval(interval);
+                    yesButton.onclick = () => {
+                        alert('Yay! Best decision ever! ❤️');
+                    };
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

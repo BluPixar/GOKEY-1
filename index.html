@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valentine's Special</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #000, #ff1493, hsl(30, 100%, 50%), #100303);
+            color: white;
+            text-align: center;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        .popup {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            width: 300px;
+            position: relative;
+        }
+        .question {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        .buttons {
+            display: flex;
+            justify-content: space-around;
+        }
+        button {
+            background: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            color: #ff1493;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+        button:hover {
+            background: #00ff00;
+            color: white;
+        }
+        .yes-button-float {
+            position: absolute;
+        }
+        .gif {
+            width: 100px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="popup" id="popup">
+        <div class="question" id="question">Will You Be My Valentine? ❤️</div>
+        <div class="buttons" id="buttons">
+            <button onclick="nextPopup(1)">Yes</button>
+            <button onclick="nextPopup(2)">No</button>
+        </div>
+    </div>
+    <script>
+        let step = 0;
+        function nextPopup(choice) {
+            let question = document.getElementById('question');
+            let buttons = document.getElementById('buttons');
+            let popup = document.getElementById('popup');
+            buttons.innerHTML = '';
+            
+            if (step === 0 && choice === 1) {
+                question.innerText = "Bhai.. thoda lamba route lo... select NO till the end";
+                buttons.innerHTML = '<button onclick="resetPopup()">Ok...</button>';
+            } else if (step === 0 && choice === 2) {
+                question.innerText = "Haww ...if u thought ki me mazaak krne waali thi,...u r wrong...ok abh next yr poochungi 💔";
+                let img = document.createElement("img");
+                img.src = "https://media.tenor.com/6qvBOxO2VugAAAAM/sad-broken-heart.gif";
+                img.classList.add("gif");
+                popup.appendChild(img);
+                buttons.innerHTML = '<button onclick="resetPopup()">Ok...</button>';
+            } else if (step === 1 && choice === 2) {
+                question.innerText = "Wah...very cute. Sooo... Will you be my Valentine?";
+                buttons.innerHTML = '<button onclick="nextPopup(3)">Yes</button><button onclick="nextPopup(4)">No</button>';
+            } else if (step === 2 && choice === 4) {
+                question.innerHTML = "Haww dil mera thukaraya....";
+                buttons.innerHTML = '<button onclick="finalPopup()">Huh?</button>';
+                let img = document.createElement("img");
+                img.src = "https://media.tenor.com/6qvBOxO2VugAAAAM/sad-broken-heart.gif";
+                img.classList.add("gif");
+                popup.appendChild(img);
+            } else if (step === 2 && choice === 3) {
+                question.innerText = "Toooo easy peasyyyy";
+                buttons.innerHTML = '<button onclick="alert(\'Best decision ever! ❤️\')">Yay!</button>';
+            }
+            step++;
+        }
+        function resetPopup() {
+            step = 1;
+            document.getElementById('question').innerText = "Will you be my Valentine? ❤️";
+            document.getElementById('buttons').innerHTML = '<button onclick="nextPopup(1)">Yes</button><button onclick="nextPopup(2)">No</button>';
+        }
+        function finalPopup() {
+            document.getElementById('question').innerText = "See u tomorrow my valentine😏";
+            document.getElementById('buttons').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
