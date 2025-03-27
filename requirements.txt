@@ -25,10 +25,6 @@ jsonschema-specifications==2024.10.1
 MarkupSafe==3.0.2
 narwhals==1.32.0
 nltk==3.9.1
-punkt
-wordnet
-omw-1.4
-punkt_tab
 numpy==2.2.4
 packaging==24.2
 pandas==2.2.3
