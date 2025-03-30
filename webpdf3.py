@@ -23,12 +23,12 @@ if not groq_api_key:
 
 # Set NLTK data path
 nltk.data.path.append(os.path.join(os.getcwd(), "nltk_data"))
-
 # Download required NLTK resources
-nltk.download('punkt', download_dir="nltk_data")
+nltk.download('punkt', download_dir=os.path.join(os.getcwd(), "nltk_data"))
 nltk.download('wordnet', download_dir="nltk_data")
 nltk.download('omw-1.4', download_dir="nltk_data")
 nltk.download('averaged_perceptron_tagger', download_dir="nltk_data")
+
 
 def preprocess_text(text):
     """Tokenization, Lemmatization, and Cleaning"""
