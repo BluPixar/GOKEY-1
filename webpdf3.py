@@ -20,9 +20,10 @@ if not groq_api_key:
     raise ValueError("API key not found! Make sure your .env file is correctly set.")
 
 # Download NLTK resources
-print(nltk.data.path)  # Check where NLTK is searching for resources
 nltk.download('punkt')
 nltk.download('wordnet')
+nltk.download('omw-1.4')
+nltk.download('averaged_perceptron_tagger')
 
 def preprocess_text(text):
     """Tokenization, Lemmatization, and Cleaning"""
