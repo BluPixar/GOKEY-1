@@ -1,3 +1,4 @@
 punkt
 wordnet
 omw-1.4
+punkt_tab
