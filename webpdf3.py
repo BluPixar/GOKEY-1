@@ -1,116 +1,98 @@
 import os
-import sys
 import streamlit as st
-import faiss
-import numpy as np
-import fitz  # PyMuPDF for PDF parsing
-import re
+from PyPDF2 import PdfReader
 import nltk
-from nltk.tokenize import word_tokenize
+from nltk.corpus import wordnet
 from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import CountVectorizer
-from groq import Groq
-from dotenv import load_dotenv  # Load environment variables
+import numpy as np
+import faiss
+from sklearn.metrics.pairwise import cosine_similarity
 
-# Load .env variables
-load_dotenv()
-
-groq_api_key = os.getenv("GROQ_API_KEY")
-if not groq_api_key:
-    raise ValueError("API key not found! Make sure your .env file is correctly set.")
-
-# Set NLTK data path
-NLTK_PATH = os.path.join(os.getcwd(), "nltk_data")
-nltk.data.path.append(NLTK_PATH)
-
-# Ensure required NLTK data is downloaded
-def safe_nltk_download(package):
+# 💡 Safely download NLTK data
+def safe_nltk_download(resource):
     try:
-        nltk.data.find(f'tokenizers/{package}' if package == 'punkt' else f'corpora/{package}')
+        nltk.data.find(resource)
     except LookupError:
-        nltk.download(package, download_dir=NLTK_PATH)
+        nltk.download(resource.split('/')[-1])
 
-safe_nltk_download('punkt')
-safe_nltk_download('wordnet')
-safe_nltk_download('omw-1.4')
-safe_nltk_download('averaged_perceptron_tagger')
+# ✅ Ensure all required NLTK resources are available
+safe_nltk_download('tokenizers/punkt')
+safe_nltk_download('corpora/wordnet')
+safe_nltk_download('corpora/omw-1.4')
+safe_nltk_download('taggers/averaged_perceptron_tagger')
 
-def preprocess_text(text):
-    """Tokenization, Lemmatization, and Cleaning"""
-    text = re.sub(r'[^a-zA-Z0-9\s]', '', text.lower())
-    try:
-        tokens = word_tokenize(text)
-    except LookupError:
-        st.error("Required NLTK tokenizer 'punkt' is missing.")
-        return ""
-    lemmatizer = WordNetLemmatizer()
-    lemmatized_tokens = [lemmatizer.lemmatize(token) for token in tokens]
-    return ' '.join(lemmatized_tokens)
+# Initialize lemmatizer
+lemmatizer = WordNetLemmatizer()
 
-def extract_text_from_pdf(pdf_file):
-    """Extract text from uploaded PDF"""
-    doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
-    text = "\n".join([page.get_text("text") for page in doc])
-    return preprocess_text(text)
+# 📚 Text preprocessing functions
+def get_wordnet_pos(treebank_tag):
+    if treebank_tag.startswith('J'):
+        return wordnet.ADJ
+    elif treebank_tag.startswith('V'):
+        return wordnet.VERB
+    elif treebank_tag.startswith('N'):
+        return wordnet.NOUN
+    elif treebank_tag.startswith('R'):
+        return wordnet.ADV
+    else:
+        return wordnet.NOUN
 
-def create_faiss_index(text_chunks):
-    """Convert text chunks to vectorized form and store in FAISS"""
-    vectorizer = CountVectorizer(binary=True)
-    vectors = vectorizer.fit_transform(text_chunks).toarray()
-    dimension = vectors.shape[1]
-    index = faiss.IndexFlatL2(dimension)
-    index.add(np.array(vectors, dtype=np.float32))
-    return index, vectorizer
+def preprocess(text):
+    from nltk import word_tokenize, pos_tag
+    tokens = word_tokenize(text.lower())
+    tagged_tokens = pos_tag(tokens)
+    lemmatized_tokens = [lemmatizer.lemmatize(token, get_wordnet_pos(tag)) for token, tag in tagged_tokens]
+    return " ".join(lemmatized_tokens)
 
-def truncate_text(text, max_tokens=1024):
-    """Truncate text to fit within the model's token limit."""
-    words = text.split()[:max_tokens]
-    return " ".join(words)
+# 🧠 Embedder using Bag-of-Words
+class SimpleBoWEmbedder:
+    def __init__(self):
+        self.vectorizer = CountVectorizer()
 
-def search_faiss(query, index, vectorizer, text_chunks):
-    """Find the closest matching text in FAISS index"""
-    query_vector = vectorizer.transform([query]).toarray().astype(np.float32)
-    D, I = index.search(query_vector, 1)
-    if I[0][0] == -1:
-        return "No relevant context found."
-    return text_chunks[I[0][0]]
+    def fit_transform(self, documents):
+        return self.vectorizer.fit_transform(documents).toarray()
 
-def query_groq(question, context):
-    """Send query to Groq API with truncated context"""
-    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    def transform(self, documents):
+        return self.vectorizer.transform(documents).toarray()
 
-    truncated_context = truncate_text(context, max_tokens=1024)
-    
-    response = client.chat.completions.create(
-        model="llama3-8b-8192",
-        messages=[
-            {"role": "system", "content": "You are an AI assistant."},
-            {"role": "user", "content": f"Context: {truncated_context}\nQuestion: {question}"}
-        ]
-    )
-    return response.choices[0].message.content
+# 📖 PDF Loader
+def load_pdf(file):
+    reader = PdfReader(file)
+    text = ''
+    for page in reader.pages:
+        text += page.extract_text()
+    return text
 
-# Streamlit UI
-st.title("AI-Powered Document Q&A")
+# 📌 Main app
+st.title("📄 AI PDF Q&A")
 
-uploaded_file = st.file_uploader("Upload a PDF", type=["pdf"])
+uploaded_file = st.file_uploader("Upload a PDF file", type="pdf")
 
-if uploaded_file is not None:
-    st.success("PDF Uploaded Successfully!")
-    document_text = extract_text_from_pdf(uploaded_file)
-    if document_text:
-        text_chunks = document_text.split(". ")
-        faiss_index, vectorizer = create_faiss_index(text_chunks)
+if uploaded_file:
+    with st.spinner("Processing PDF..."):
+        text = load_pdf(uploaded_file)
+        chunks = [text[i:i + 500] for i in range(0, len(text), 500)]
+        processed_chunks = [preprocess(chunk) for chunk in chunks]
 
-        query = st.text_input("Ask a question from the document:")
-        if query:
-            context = search_faiss(query, faiss_index, vectorizer, text_chunks)
-            answer = query_groq(query, context)
-            st.write("### Answer:")
-            st.write(answer)
+        embedder = SimpleBoWEmbedder()
+        doc_vectors = embedder.fit_transform(processed_chunks)
 
-# Run Streamlit automatically if executed as a script
-if __name__ == "__main__":
-    if not any(arg.endswith("streamlit") for arg in sys.argv):
-        os.system(f"streamlit run {sys.argv[0]}")
-        sys.exit()
+        # 🎯 Create FAISS index
+        dimension = doc_vectors.shape[1]
+        index = faiss.IndexFlatL2(dimension)
+        index.add(np.array(doc_vectors).astype(np.float32))
+
+    st.success("PDF processed successfully!")
+
+    query = st.text_input("Ask a question:")
+
+    if query:
+        processed_query = preprocess(query)
+        query_vector = embedder.transform([processed_query])
+        D, I = index.search(np.array(query_vector).astype(np.float32), k=3)
+
+        answers = [chunks[i] for i in I[0]]
+        st.subheader("Top Answers:")
+        for i, ans in enumerate(answers, 1):
+            st.markdown(f"**{i}.** {ans}")
