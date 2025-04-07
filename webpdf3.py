@@ -1,6 +1,6 @@
 import os
 import streamlit as st
-from pypdf2 import PdfReader
+from pypdf import PdfReader
 import nltk
 from nltk.corpus import wordnet
 from nltk.stem import WordNetLemmatizer
