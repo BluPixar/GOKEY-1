@@ -20,8 +20,15 @@ if not groq_api_key:
     raise ValueError("API key not found! Make sure your .env file is correctly set.")
 
 # Download NLTK resources
-nltk.download('punkt')
-nltk.download('wordnet')
+
+# Set NLTK data path
+nltk.data.path.append(os.path.join(os.getcwd(), "nltk_data"))
+# Download required NLTK resources
+nltk.download('punkt', download_dir=os.path.join(os.getcwd(), "nltk_data"))
+nltk.download('wordnet', download_dir="nltk_data")
+nltk.download('omw-1.4', download_dir="nltk_data")
+nltk.download('averaged_perceptron_tagger', download_dir="nltk_data")
+
 
 def preprocess_text(text):
     """Tokenization, Lemmatization, and Cleaning"""
@@ -46,6 +53,11 @@ def create_faiss_index(text_chunks):
     index.add(np.array(vectors, dtype=np.float32))
     return index, vectorizer
 
+def truncate_text(text, max_tokens=1024):
+    """Truncate text to fit within the model's token limit."""
+    words = text.split()[:max_tokens]  # Take only the first max_tokens words
+    return " ".join(words)
+
 def search_faiss(query, index, vectorizer, text_chunks):
     """Find the closest matching text in FAISS index"""
     query_vector = vectorizer.transform([query]).toarray().astype(np.float32)
@@ -55,18 +67,20 @@ def search_faiss(query, index, vectorizer, text_chunks):
     return text_chunks[I[0][0]]
 
 def query_groq(question, context):
-    """Send query to Groq API with extracted context"""
+    """Send query to Groq API with truncated context"""
     client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-    response = client.chat.completions.create(  # Fix: Use `.chat.create(...)` instead of `.chat(...)`
+    truncated_context = truncate_text(context, max_tokens=1024)  # Limit context size
+    
+    response = client.chat.completions.create(
+        model="llama3-8b-8192",
         messages=[
             {"role": "system", "content": "You are an AI assistant."},
-            {"role": "user", "content": f"Context: {context}\nQuestion: {question}"}
-        ],
-        model="llama3-8b-8192"  # Replace with your Groq model name if different
+            {"role": "user", "content": f"Context: {truncated_context}\nQuestion: {question}"}
+        ]
     )
+    return response.choices[0].message.content
 
-    return response.choices[0].message.content  # Extract the response text
 
 # Streamlit UI
 st.title("AI-Powered Document Q&A")
