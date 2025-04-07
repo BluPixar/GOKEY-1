@@ -19,15 +19,37 @@ groq_api_key = os.getenv("GROQ_API_KEY")
 if not groq_api_key:
     raise ValueError("API key not found! Make sure your .env file is correctly set.")
 
-# Download NLTK resources
-
 # Set NLTK data path
-nltk.data.path.append(os.path.join(os.getcwd(), "nltk_data"))
-# Download required NLTK resources
-nltk.download('punkt', download_dir=os.path.join(os.getcwd(), "nltk_data"))
-nltk.download('wordnet', download_dir="nltk_data")
-nltk.download('omw-1.4', download_dir="nltk_data")
-nltk.download('averaged_perceptron_tagger', download_dir="nltk_data")
+nltk_path = os.path.join(os.getcwd(), "nltk_data")
+os.makedirs(nltk_path, exist_ok=True)
+nltk.data.path.append(nltk_path)
+
+# Download required NLTK resources safely
+for resource in ['punkt', 'punkt_tab', 'wordnet', 'omw-1.4', 'averaged_perceptron_tagger']:
+    try:
+        nltk.data.find(f'tokenizers/{resource}' if 'punkt' in resource else f'corpora/{resource}')
+    except LookupError:
+        nltk.download(resource, download_dir=nltk_path)
+
+# Force-load Punkt tokenizer if needed (fix for punkt_tab issue)
+from nltk.tokenize.punkt import PunktSentenceTokenizer, PunktTrainer
+from nltk import data as nltk_data
+import pickle
+
+try:
+    _ = PunktSentenceTokenizer()
+except LookupError:
+    print("Punkt tokenizer not found. Training a fallback tokenizer.")
+    trainer = PunktTrainer()
+    trainer.INCLUDE_ALL_COLLOCS = True
+    trainer.train("This is a sentence. Here's another one. And a third!")
+    tokenizer = PunktSentenceTokenizer(trainer.get_params())
+    
+    tokenizer_path = os.path.join(nltk_path, "tokenizers", "punkt", "english.pickle")
+    os.makedirs(os.path.dirname(tokenizer_path), exist_ok=True)
+    with open(tokenizer_path, "wb") as f:
+        pickle.dump(tokenizer, f)
+    nltk_data.load("tokenizers/punkt/english.pickle")
 
 
 def preprocess_text(text):
@@ -55,22 +77,22 @@ def create_faiss_index(text_chunks):
 
 def truncate_text(text, max_tokens=1024):
     """Truncate text to fit within the model's token limit."""
-    words = text.split()[:max_tokens]  # Take only the first max_tokens words
+    words = text.split()[:max_tokens]
     return " ".join(words)
 
 def search_faiss(query, index, vectorizer, text_chunks):
     """Find the closest matching text in FAISS index"""
     query_vector = vectorizer.transform([query]).toarray().astype(np.float32)
-    D, I = index.search(query_vector, 1)  # Get closest match
+    D, I = index.search(query_vector, 1)
     if I[0][0] == -1:
         return "No relevant context found."
     return text_chunks[I[0][0]]
 
 def query_groq(question, context):
     """Send query to Groq API with truncated context"""
-    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    client = Groq(api_key=groq_api_key)
 
-    truncated_context = truncate_text(context, max_tokens=1024)  # Limit context size
+    truncated_context = truncate_text(context, max_tokens=1024)
     
     response = client.chat.completions.create(
         model="llama3-8b-8192",
@@ -102,6 +124,6 @@ if uploaded_file is not None:
 
 # Run Streamlit automatically if executed as a script
 if __name__ == "__main__":
-    if not any(arg.endswith("streamlit") for arg in sys.argv):  # Ensure not already in Streamlit mode
+    if not any(arg.endswith("streamlit") for arg in sys.argv):
         os.system(f"streamlit run {sys.argv[0]}")
         sys.exit()
