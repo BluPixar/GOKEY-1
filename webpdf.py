@@ -88,20 +88,40 @@ def search_faiss(query, index, vectorizer, text_chunks):
         return "No relevant context found."
     return text_chunks[I[0][0]]
 
-def query_groq(question, context):
-    """Send query to Groq API with truncated context"""
+def query_groq(question, context, history):
+    """Send query to Groq API with optional context from history."""
     client = Groq(api_key=groq_api_key)
 
-    truncated_context = truncate_text(context, max_tokens=1024)
-    
+    # Prepare conversation history (last 3 interactions)
+    history_context = ""
+    if history:
+        recent_history = history[-3:]  # Get last 3
+        history_context = "\n".join(
+            [f"Q{i+1}: {h['question']}\nA{i+1}: {h['answer']}" for i, h in enumerate(recent_history)]
+        )
+
+    prompt = f"""
+    You are an intelligent assistant helping answer questions based on a document.
+
+    Previous Conversation:
+    {history_context}
+
+    Current Document Context:
+    {truncate_text(context, max_tokens=512)}
+
+    User's Question:
+    {question}
+    """
+
     response = client.chat.completions.create(
         model="llama3-8b-8192",
         messages=[
-            {"role": "system", "content": "You are an AI assistant."},
-            {"role": "user", "content": f"Context: {truncated_context}\nQuestion: {question}"}
+            {"role": "system", "content": "You are an AI assistant that gives detailed, helpful answers using document context and chat history."},
+            {"role": "user", "content": prompt.strip()}
         ]
     )
     return response.choices[0].message.content
+
 
 
 # Streamlit UI
@@ -131,7 +151,7 @@ if uploaded_file is not None:
     query = st.text_input("Ask a question from the document:")
     if query:
         context = search_faiss(query, faiss_index, vectorizer, text_chunks)
-        answer = query_groq(query, context)
+        answer = query_groq(query, context, st.session_state.history)
         
         # Update chat history in the session state
         st.session_state.history.append({"question": query, "answer": answer})
