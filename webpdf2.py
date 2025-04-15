@@ -106,7 +106,7 @@ def query_groq(question, context):
 
 # ========== Streamlit App ==========
 
-st.title("🧠 AI-Powered Document Q&A")
+st.title("AI-Powered Document Q&A")
 
 # Use session state to keep history
 if "chat_history" not in st.session_state:
@@ -121,7 +121,7 @@ def build_conversation_context():
     return context
 
 
-uploaded_file = st.file_uploader("📄 Upload a PDF", type=["pdf"])
+uploaded_file = st.file_uploader("Upload a PDF", type=["pdf"])
 
 if uploaded_file is not None:
     st.success("✅ PDF Uploaded Successfully!")
@@ -129,7 +129,7 @@ if uploaded_file is not None:
     text_chunks = document_text.split(". ")
     faiss_index, vectorizer = create_faiss_index(text_chunks)
 
-    query = st.text_input("💬 Ask a question from the document:")
+    query = st.text_input("Ask a question from the document:")
     if query:
         context = build_conversation_context()  # Get ongoing conversation context
         if context:
@@ -148,13 +148,13 @@ if uploaded_file is not None:
         # Save to history
         st.session_state.chat_history.append((query, answer))
 
-        st.markdown("### 🤖 Answer:")
+        st.markdown("Answer:")
         st.write(answer)
 
     # Display History Log
     if st.session_state.chat_history:
         st.markdown("---")
-        st.markdown("### 📝 Chat History")
+        st.markdown("Chat History")
         for i, (q, a) in enumerate(st.session_state.chat_history[::-1]):
             st.markdown(f"**Q{i+1}:** {q}")
             st.markdown(f"**A{i+1}:** {a}")
