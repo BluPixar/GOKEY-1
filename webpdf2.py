@@ -106,13 +106,22 @@ def query_groq(question, context):
 
 # ========== Streamlit App ==========
 
-st.title("AI-Powered Document Q&A")
+st.title("🧠 AI-Powered Document Q&A")
 
 # Use session state to keep history
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-uploaded_file = st.file_uploader("Upload a PDF", type=["pdf"])
+# To create conversation context
+def build_conversation_context():
+    """Builds conversation context from the chat history."""
+    context = ""
+    for q, a in st.session_state.chat_history:
+        context += f"Q: {q}\nA: {a}\n\n"
+    return context
+
+
+uploaded_file = st.file_uploader("📄 Upload a PDF", type=["pdf"])
 
 if uploaded_file is not None:
     st.success("✅ PDF Uploaded Successfully!")
@@ -120,21 +129,32 @@ if uploaded_file is not None:
     text_chunks = document_text.split(". ")
     faiss_index, vectorizer = create_faiss_index(text_chunks)
 
-    query = st.text_input("Ask a question from the document:")
+    query = st.text_input("💬 Ask a question from the document:")
     if query:
-        context = search_faiss(query, faiss_index, vectorizer, text_chunks)
+        context = build_conversation_context()  # Get ongoing conversation context
+        if context:
+            context += f"Q: {query}\n"  # Add the current query to the context
+        
+        # Search for relevant context from the document
+        document_context = search_faiss(query, faiss_index, vectorizer, text_chunks)
+        
+        # If the document context is relevant, add it to the conversation context
+        if document_context:
+            context += f"A (from document): {document_context}\n"
+
+        # Send to Groq
         answer = query_groq(query, context)
 
         # Save to history
         st.session_state.chat_history.append((query, answer))
 
-        st.markdown("Answer:")
+        st.markdown("### 🤖 Answer:")
         st.write(answer)
 
     # Display History Log
     if st.session_state.chat_history:
         st.markdown("---")
-        st.markdown("Chat History")
+        st.markdown("### 📝 Chat History")
         for i, (q, a) in enumerate(st.session_state.chat_history[::-1]):
             st.markdown(f"**Q{i+1}:** {q}")
             st.markdown(f"**A{i+1}:** {a}")
