@@ -1,6 +1,5 @@
 import os
-os.environ["STREAMLIT_RUN_CONTEXT"] = "1"
-
+import sys
 import streamlit as st
 import faiss
 import numpy as np
@@ -11,11 +10,47 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import CountVectorizer
 from groq import Groq
-import os
+from dotenv import load_dotenv  # Load environment variables
 
-# Download NLTK resources
-nltk.download('punkt')
-nltk.download('wordnet')
+# Load .env variables
+load_dotenv()
+
+groq_api_key = os.getenv("GROQ_API_KEY")
+if not groq_api_key:
+    raise ValueError("API key not found! Make sure your .env file is correctly set.")
+
+# Set NLTK data path
+nltk_path = os.path.join(os.getcwd(), "nltk_data")
+os.makedirs(nltk_path, exist_ok=True)
+nltk.data.path.append(nltk_path)
+
+# Download required NLTK resources safely
+for resource in ['punkt', 'punkt_tab', 'wordnet', 'omw-1.4', 'averaged_perceptron_tagger']:
+    try:
+        nltk.data.find(f'tokenizers/{resource}' if 'punkt' in resource else f'corpora/{resource}')
+    except LookupError:
+        nltk.download(resource, download_dir=nltk_path)
+
+# Force-load Punkt tokenizer if needed (fix for punkt_tab issue)
+from nltk.tokenize.punkt import PunktSentenceTokenizer, PunktTrainer
+from nltk import data as nltk_data
+import pickle
+
+try:
+    _ = PunktSentenceTokenizer()
+except LookupError:
+    print("Punkt tokenizer not found. Training a fallback tokenizer.")
+    trainer = PunktTrainer()
+    trainer.INCLUDE_ALL_COLLOCS = True
+    trainer.train("This is a sentence. Here's another one. And a third!")
+    tokenizer = PunktSentenceTokenizer(trainer.get_params())
+    
+    tokenizer_path = os.path.join(nltk_path, "tokenizers", "punkt", "english.pickle")
+    os.makedirs(os.path.dirname(tokenizer_path), exist_ok=True)
+    with open(tokenizer_path, "wb") as f:
+        pickle.dump(tokenizer, f)
+    nltk_data.load("tokenizers/punkt/english.pickle")
+
 
 def preprocess_text(text):
     """Tokenization, Lemmatization, and Cleaning"""
@@ -40,20 +75,50 @@ def create_faiss_index(text_chunks):
     index.add(np.array(vectors, dtype=np.float32))
     return index, vectorizer
 
+def truncate_text(text, max_tokens=1024):
+    """Truncate text to fit within the model's token limit."""
+    words = text.split()[:max_tokens]
+    return " ".join(words)
+
 def search_faiss(query, index, vectorizer, text_chunks):
     """Find the closest matching text in FAISS index"""
     query_vector = vectorizer.transform([query]).toarray().astype(np.float32)
-    _, I = index.search(query_vector, 1)  # Get closest match
+    D, I = index.search(query_vector, 1)
+    if I[0][0] == -1:
+        return "No relevant context found."
     return text_chunks[I[0][0]]
 
 def query_groq(question, context):
-    """Send query to Groq API with extracted context"""
-    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-    response = client.generate(f"Context: {context}\nQuestion: {question}")
-    return response
+    """Send query to Groq API with truncated context"""
+    client = Groq(api_key=groq_api_key)
+
+    truncated_context = truncate_text(context, max_tokens=1024)
+    
+    response = client.chat.completions.create(
+        model="llama3-8b-8192",
+        messages=[
+            {"role": "system", "content": "You are an AI assistant."},
+            {"role": "user", "content": f"Context: {truncated_context}\nQuestion: {question}"}
+        ]
+    )
+    return response.choices[0].message.content
+
 
 # Streamlit UI
 st.title("AI-Powered Document Q&A")
+
+# Sidebar for chat history (collapsible)
+with st.sidebar:
+    st.subheader("Chat History")
+    if "history" not in st.session_state:
+        st.session_state.history = []
+    
+    # Display chat history
+    if len(st.session_state.history) > 0:
+        for item in st.session_state.history:
+            st.write(f"**Q:** {item['question']}")
+            st.write(f"**A:** {item['answer']}")
+            st.write("---")
 
 uploaded_file = st.file_uploader("Upload a PDF", type=["pdf"])
 
@@ -67,12 +132,15 @@ if uploaded_file is not None:
     if query:
         context = search_faiss(query, faiss_index, vectorizer, text_chunks)
         answer = query_groq(query, context)
+        
+        # Update chat history in the session state
+        st.session_state.history.append({"question": query, "answer": answer})
+        
         st.write("### Answer:")
         st.write(answer)
-import sys
 
-# Check if running as a script directly
+# Run Streamlit automatically if executed as a script
 if __name__ == "__main__":
-    if "streamlit" not in sys.argv[0]:  # Ensure it’s not already in Streamlit mode
+    if not any(arg.endswith("streamlit") for arg in sys.argv):
         os.system(f"streamlit run {sys.argv[0]}")
-        sys.exit()  # Exit the normal Python execution after launching Streamlit
+        sys.exit()
